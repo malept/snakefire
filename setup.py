@@ -29,7 +29,7 @@ OS that has QT support.""",
     packages=find_packages(exclude = [ 'ez_setup', 'examples', 'tests', 'utils' ]),
     install_requires=[
         "pyfire>=0.3.4",
-        "pyqt",
+        "python-qt",
         "keyring",
         "pyenchant"
     ],
@@ -44,7 +44,7 @@ if sys.platform.find("darwin") == 0:
                            'iconfile':'packaging/osx/Snakefire.icns'}},
         setup_requires=['py2app']
     )
-    args["install_requires"].remove("pyqt")
+    args["install_requires"].remove("python-qt")
     args.update(mac_args)
 
 if sys.platform.find("linux") == 0:
