@@ -7,6 +7,8 @@ from PyQt4 import QtCore
 
 from urlparse import urlparse
 
+from snakefire.emoji import Emoji
+
 class MessageRenderer(QtCore.QThread):
     MESSAGES = {
         "alert": u'<div class="alert"><span class="time">[{time}]</span> <span class="author">{user}</span>: {message}</div>',
@@ -25,7 +27,7 @@ class MessageRenderer(QtCore.QThread):
         "tweet": u'<div class="tweet"><a href="{url_user}">{user}</a> <a href="{url}">tweeted</a>: {message}</div>'
     }
 
-    def __init__(self, apiToken, maximumImageWidth, room, message, live=True, updateRoom=True, showTimestamps=True, alert=False, alertIsDirectPing=False, parent=None):
+    def __init__(self, apiToken, maximumImageWidth, room, message, live=True, updateRoom=True, showTimestamps=True, alert=False, alertIsDirectPing=False, parent=None, emoji=None):
         super(MessageRenderer, self).__init__(parent)
         self._apiToken = apiToken
         self._maximumImageWidth = maximumImageWidth
@@ -36,6 +38,7 @@ class MessageRenderer(QtCore.QThread):
         self._showTimestamps = showTimestamps
         self._alert = alert
         self._alertIsDirectPing = alertIsDirectPing
+        self._emoji = emoji if emoji else Emoji()
 
     def run(self):
         html = self.render()
@@ -101,7 +104,9 @@ class MessageRenderer(QtCore.QThread):
                 message = body
             )
         elif self._message.is_topic_change():
-            html = self.MESSAGES["topic"].format(user=self._message.user.name, topic=self._message.body)
+            html = self.MESSAGES["topic"].format(
+                user=self._message.user.name,
+                topic=self._emoji.replace(self._message.body))
 
         return unicode(html)
 
@@ -184,7 +189,7 @@ class MessageRenderer(QtCore.QThread):
         return False
 
     def _plainTextToHTML(self, string):
-        return string.replace("<", "&lt;").replace(">", "&gt;").replace("\n", "<br />")
+        return self._emoji.replace(string.replace("<", "&lt;").replace(">", "&gt;").replace("\n", "<br />"))
 
     def _autoLink(self, string):
         urlre = re.compile("(\(?https?://[-A-Za-z0-9+&@#/%?=~_()|!:,.;]*[-A-Za-z0-9+&@#/%=~_()|])(\">|</a>)?")

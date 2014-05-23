@@ -9,6 +9,7 @@ import urllib2
 import enchant
 
 from snakefire import NOTIFICATIONS_ENABLED, KDE_ENABLED
+from snakefire.emoji import Emoji
 
 from PyQt4 import Qt
 from PyQt4 import QtGui
@@ -53,6 +54,7 @@ class Snakefire(object):
         self._settings = {}
         self._canConnect = False
         self._cfDisconnected()
+        self._emoji = Emoji()
 
         if len(sys.argv) > 1:
             self._qsettings = QtCore.QSettings(sys.argv[1], QtCore.QSettings.IniFormat if sys.platform.find("win") == 0 else QtCore.QSettings.NativeFormat)
@@ -498,8 +500,9 @@ class Snakefire(object):
         alertIsDirectPing = False
 
         if message.is_text() and not message.is_by_current_user():
-            alertIsDirectPing = (QtCore.QString(message.body).indexOf(QtCore.QRegExp("\\s*\\b{name}\\b".format(name=QtCore.QRegExp.escape(self._worker.getUser().name)), QtCore.Qt.CaseInsensitive)) == 0)
-            alert = self.getSetting("alerts", "notify_ping") if alertIsDirectPing else self._matchesAlert(message.body)
+            content = self._emoji.replace(message.body)
+            alertIsDirectPing = (QtCore.QString(content).indexOf(QtCore.QRegExp("\\s*\\b{name}\\b".format(name=QtCore.QRegExp.escape(self._worker.getUser().name)), QtCore.Qt.CaseInsensitive)) == 0)
+            alert = self.getSetting("alerts", "notify_ping") if alertIsDirectPing else self._matchesAlert(content)
 
         maximumImageWidth = int(view.size().width() * 0.4) # 40% of viewport
         renderer = MessageRenderer(
@@ -512,7 +515,8 @@ class Snakefire(object):
             showTimestamps = self.getSetting("display", "show_message_timestamps"),
             alert=alert,
             alertIsDirectPing=alertIsDirectPing,
-            parent=self
+            parent=self,
+            emoji=self._emoji
         )
 
         if renderer.needsThread():
@@ -527,6 +531,7 @@ class Snakefire(object):
 
         frame = self._rooms[room.id]["frame"]
         view = self._rooms[room.id]["view"]
+        content = self._emoji.replace(message.body)
         if not frame or not view:
             return
 
@@ -558,7 +563,7 @@ class Snakefire(object):
                 self._trayIcon.alert()
 
             if live and ((alert or (not isActiveTab and notifyInactiveTab and message.is_text())) and self.getSetting("alerts", "notify_notify")):
-                self._notify(room, unicode(u"{} says: {}".format(message.user.name, message.body)), message.user)
+                self._notify(room, unicode(u"{} says: {}".format(message.user.name, content)), message.user)
 
         if updateRoom:
             if (message.is_joining() or message.is_leaving()):
@@ -566,7 +571,7 @@ class Snakefire(object):
             elif message.is_upload():
                 self.updateRoomUploads(room.id)
             elif message.is_topic_change() and not message.is_by_current_user():
-                self._cfTopicChanged(room, message.body)
+                self._cfTopicChanged(room, content)
 
         # Respond to direct pings while being away, but only send an auto-response if last one was sent more than 2 minutes ago
         if live and alertIsDirectPing and self.getSetting("program", "away") and self._idle:
